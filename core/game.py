@@ -1,84 +1,86 @@
-DIRECTIONS = [
-    (-1, -1), (-1, 0), (-1, 1),
-    (0, -1),          (0, 1),
-    (1, -1),  (1, 0), (1, 1)
-]
+# game.py
+import random
 
-class Game:
+
+class Othello:
     def __init__(self):
-        self.board = [[' ' for _ in range(8)] for _ in range(8)]
-        self.board[3][3] = 'W'
-        self.board[3][4] = 'B'
-        self.board[4][3] = 'B'
-        self.board[4][4] = 'W'
-        self.current_player = 'B'
-        self.players = {}  # {'B': chat_id, 'W': chat_id}
+        self.board_size = 8
+        self.player_black = '⚫️'
+        self.player_white = '⚪️'
+        self.empty_square = '\u200b'
+        self.reset_board()
 
-    def print_board(self):
-        print('  0 1 2 3 4 5 6 7')
-        for i, row in enumerate(self.board):
-            print(i, ' '.join(row))
+    def new_board(self):
+        board = [[self.empty_square for _ in range(self.board_size)] for _ in range(self.board_size)]
+        board[3][3] = self.player_white
+        board[3][4] = self.player_black
+        board[4][3] = self.player_black
+        board[4][4] = self.player_white
+        return board
 
-    def is_on_board(self, x, y):
-        return 0 <= x < 8 and 0 <= y < 8
+    def reset_board(self):
+        self.board = self.new_board()
+        self.current_player = self.player_black
 
-    def is_valid_move(self, x, y):
-        if not self.is_on_board(x, y) or self.board[x][y] != ' ':
+    def get_opponent(self, player):
+        return self.player_white if player == self.player_black else self.player_black
+
+    def is_valid_move(self, row, col, player):
+        if not (0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row][
+            col] == self.empty_square):
             return False
 
-        other_player = 'W' if self.current_player == 'B' else 'B'
-
-        for dx, dy in DIRECTIONS:
-            nx, ny = x + dx, y + dy
-            found_opponent = False
-
-            while self.is_on_board(nx, ny) and self.board[nx][ny] == other_player:
-                nx += dx
-                ny += dy
-                found_opponent = True
-
-            if found_opponent and self.is_on_board(nx, ny) and self.board[nx][ny] == self.current_player:
-                return True
-
+        opponent = self.get_opponent(player)
+        for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1), (1, -1), (-1, 1)]:
+            r, c = row + dr, col + dc
+            if 0 <= r < self.board_size and 0 <= c < self.board_size and self.board[r][c] == opponent:
+                r, c = r + dr, c + dc
+                while 0 <= r < self.board_size and 0 <= c < self.board_size:
+                    if self.board[r][c] == player:
+                        return True
+                    if self.board[r][c] == self.empty_square:
+                        break
+                    r, c = r + dr, c + dc
         return False
 
-    def make_move(self, x, y):
-        if not self.is_valid_move(x, y):
+    def get_valid_moves(self, player):
+        return [(r, c) for r in range(self.board_size) for c in range(self.board_size) if
+                self.is_valid_move(r, c, player)]
+
+    def make_move(self, row, col, player):
+        if not self.is_valid_move(row, col, player):
             return False
 
-        self.board[x][y] = self.current_player
-        other_player = 'W' if self.current_player == 'B' else 'B'
+        opponent = self.get_opponent(player)
+        self.board[row][col] = player
 
-        for dx, dy in DIRECTIONS:
-            nx, ny = x + dx, y + dy
-            path = []
+        for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1), (1, -1), (-1, 1)]:
+            r, c = row + dr, col + dc
+            tiles_to_flip = []
+            while 0 <= r < self.board_size and 0 <= c < self.board_size:
+                if self.board[r][c] == self.empty_square:
+                    break
+                if self.board[r][c] == opponent:
+                    tiles_to_flip.append((r, c))
+                if self.board[r][c] == player:
+                    for flip_r, flip_c in tiles_to_flip:
+                        self.board[flip_r][flip_c] = player
+                    break
+                r, c = r + dr, c + dc
 
-            while self.is_on_board(nx, ny) and self.board[nx][ny] == other_player:
-                path.append((nx, ny))
-                nx += dx
-                ny += dy
-
-            if path and self.is_on_board(nx, ny) and self.board[nx][ny] == self.current_player:
-                for px, py in path:
-                    self.board[px][py] = self.current_player
-
-        self.switch_player()
-        return True
-
-    def switch_player(self):
-        self.current_player = 'W' if self.current_player == 'B' else 'B'
-
-    def is_game_over(self):
-        for i in range(8):
-            for j in range(8):
-                if self.board[i][j] == ' ':
-                    self.current_player_backup = self.current_player
-                    if self.is_valid_move(i,j):
-                        self.current_player = self.current_player_backup
-                        return False
+        self.current_player = self.get_opponent(player)
         return True
 
     def get_score(self):
-        b_count = sum(row.count('B') for row in self.board)
-        w_count = sum(row.count('W') for row in self.board)
-        return b_count, w_count
+        score = {self.player_black: 0, self.player_white: 0}
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                if self.board[r][c] in score:
+                    score[self.board[r][c]] += 1
+        return score
+
+    def get_ai_move(self):
+        valid_moves = self.get_valid_moves(self.player_white)
+        if not valid_moves:
+            return None
+        return random.choice(valid_moves)
