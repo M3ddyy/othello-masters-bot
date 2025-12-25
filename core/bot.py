@@ -40,14 +40,14 @@ def inline_query_handler(inline_query):
         game_id = str(uuid.uuid4())
         games[game_id] = Othello(player1_id=user.id, player1_name=user.first_name)
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("🤝 قبول کردن چالش", callback_data=f"accept_{game_id}"))
+        markup.add(types.InlineKeyboardButton("🤝 Accept Challenge", callback_data=f"accept_{game_id}"))
         response = types.InlineQueryResultArticle(
             id=game_id,
-            title="🎲 چالش بازی اتللو",
-            description=f"{user.first_name} شما را به یک بازی دعوت کرده. کلیک کنید.",
+            title="🎲 Othello Game Challenge",
+            description=f"{user.first_name} has invited you to play. Tap to join.",
             reply_markup=markup,
             input_message_content=types.InputTextMessageContent(
-                f"⚫️ {user.first_name} شما را به یک بازی اتللو دعوت کرده!\n\n⚪️ منتظر حریف برای پیوستن..."
+                f"⚫️ {user.first_name} has invited you to play Othello!\n\n⚪️ Waiting for an opponent to join..."
             )
         )
         bot.answer_inline_query(inline_query.id, [response], cache_time=1)
@@ -57,32 +57,32 @@ def inline_query_handler(inline_query):
 @bot.message_handler(commands=['start'])
 def start_command(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(types.KeyboardButton('🎲 بازی جدید'), types.KeyboardButton('📊 سابقه من'))
-    bot.send_message(message.chat.id, "به بازی اتللو خوش آمدید! ⚫️⚪️", reply_markup=markup)
+    markup.add(types.KeyboardButton('🎲 New Game'), types.KeyboardButton('📊 My Stats'))
+    bot.send_message(message.chat.id, "Welcome to Othello! ⚫️⚪️", reply_markup=markup)
 
-@bot.message_handler(func=lambda message: message.text == '🎲 بازی جدید')
+@bot.message_handler(func=lambda message: message.text == '🎲 New Game')
 def new_game_handler(message):
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("🎮 بازی با هوش مصنوعی", callback_data='vs_ai')
-    btn2 = types.InlineKeyboardButton("🤝 بازی با دوست", switch_inline_query='')
+    btn1 = types.InlineKeyboardButton("🎮 Play vs AI", callback_data='vs_ai')
+    btn2 = types.InlineKeyboardButton("🤝 Play with a Friend", switch_inline_query='')
     markup.row(btn1)
     markup.row(btn2)
-    bot.send_message(message.chat.id, "حریف خود را انتخاب کنید:", reply_markup=markup)
+    bot.send_message(message.chat.id, "Choose your opponent:", reply_markup=markup)
 
-@bot.message_handler(func=lambda message: message.text == '📊 سابقه من')
+@bot.message_handler(func=lambda message: message.text == '📊 My Stats')
 def show_history_handler(message):
     user_id = str(message.from_user.id)
     if user_id in user_stats and user_stats[user_id]['total'] > 0:
         stats = user_stats[user_id]
         reply = (
-            f"📈 آمار بازی‌های شما:\n\n"
-            f"کل بازی‌ها: {stats['total']}\n"
-            f"✅ برد: {stats['win']}\n"
-            f"❌ باخت: {stats['loss']}\n"
-            f"🤝 مساوی: {stats['draw']}"
+            f"📈 Your Game Statistics:\n\n"
+            f"Total games: {stats['total']}\n"
+            f"✅ Wins: {stats['win']}\n"
+            f"❌ Losses: {stats['loss']}\n"
+            f"🤝 Draws: {stats['draw']}"
         )
     else:
-        reply = "شما هنوز هیچ بازی ثبت شده‌ای ندارید."
+        reply = "You haven't played any games yet."
     bot.send_message(message.chat.id, reply)
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -103,11 +103,11 @@ def start_ai_game(call):
     games[game_id] = Othello(
         player1_id=user.id,
         player1_name=user.first_name,
-        player2_name="هوش مصنوعی"
+        player2_name="AI"
     )
     bot.answer_callback_query(call.id)
     bot.edit_message_text(
-        f"بازی با هوش مصنوعی شروع شد! شما {user.first_name} (⚫️) هستید.",
+        f"Game started vs AI! You are {user.first_name} (⚫️).",
         chat_id,
         call.message.message_id
     )
@@ -120,39 +120,39 @@ def accept_2p_game(call):
     user = call.from_user
 
     if not game:
-        bot.answer_callback_query(call.id, "این بازی منقضی شده است.", show_alert=True)
+        bot.answer_callback_query(call.id, "This game has expired.", show_alert=True)
         return
     if game.player1_id == user.id:
-        bot.answer_callback_query(call.id, "نمی‌توانید با خودتان بازی کنید!", show_alert=True)
+        bot.answer_callback_query(call.id, "You can't play against yourself!", show_alert=True)
         return
     if game.player2_id is not None:
-        bot.answer_callback_query(call.id, "این بازی قبلاً شروع شده.", show_alert=True)
+        bot.answer_callback_query(call.id, "This game has already started.", show_alert=True)
         return
 
     game.player2_id = user.id
     game.player2_name = user.first_name
     game.inline_message_id = call.inline_message_id
-    bot.answer_callback_query(call.id, "شما چالش را پذیرفتید!")
+    bot.answer_callback_query(call.id, "You have accepted the challenge!")
     update_board_two_player(game_id)
 
 def handle_forfeit(call):
     try:
         _, mode, game_id = call.data.split('_')
     except ValueError:
-        bot.answer_callback_query(call.id, "خطا در پردازش درخواست.", show_alert=True)
+        bot.answer_callback_query(call.id, "Error processing the request.", show_alert=True)
         return
 
     game = games.get(game_id)
     forfeiting_user = call.from_user
 
     if not game:
-        bot.answer_callback_query(call.id, "بازی یافت نشد.", show_alert=True)
+        bot.answer_callback_query(call.id, "Game not found.", show_alert=True)
         return
 
     update_stats(forfeiting_user.id, 'loss')
 
     if mode == 'ai':
-        final_text = " شما در مقابل هوش مصنوعی تسلیم شدید.\n\n🎉 هوش مصنوعی برنده شد!"
+        final_text = "You Surrendered the game against the AI.\n\n🎉 The AI wins!"
     else:
         if forfeiting_user.id == game.player1_id:
             winner_id = game.player2_id
@@ -165,11 +165,11 @@ def handle_forfeit(call):
             update_stats(winner_id, 'win')
 
         final_text = (
-            f" بازیکن {forfeiting_user.first_name} تسلیم شد.\n\n"
-            f"🎉 {winner_name} برنده شد!"
+            f" Player {forfeiting_user.first_name} has Surrendered.\n\n"
+            f"🎉 {winner_name} wins!"
         )
 
-    full_final_text = f"--- بازی تمام شد ---\n{final_text}"
+    full_final_text = f"--- Game Over ---\n{final_text}"
 
     if mode == 'ai':
         bot.edit_message_text(
@@ -186,7 +186,7 @@ def handle_forfeit(call):
         )
 
     games.pop(game_id, None)
-    bot.answer_callback_query(call.id, "شما بازی را واگذار کردید.")
+    bot.answer_callback_query(call.id, "You have Surrendered the game.")
 
 def handle_player_move(call):
     try:
@@ -203,7 +203,7 @@ def handle_player_move(call):
     current_player_id = game.get_current_player_id() if mode == '2p' else user_id
 
     if user_id != current_player_id:
-        bot.answer_callback_query(call.id, "⏳ نوبت شما نیست!", show_alert=True)
+        bot.answer_callback_query(call.id, "⏳ It's not your turn!", show_alert=True)
         return
 
     if game.make_move(r, c, game.current_player):
@@ -216,7 +216,7 @@ def handle_player_move(call):
             if not check_game_over(game_id):
                 update_board_two_player(game_id)
     else:
-        bot.answer_callback_query(call.id, "حرکت غیرمجاز! ❌", show_alert=True)
+        bot.answer_callback_query(call.id, "❌ Invalid move!", show_alert=True)
 
 
 def process_game_turn_ai(game_id, message):
@@ -242,7 +242,7 @@ def process_game_turn_ai(game_id, message):
         return
 
     if not game.get_valid_moves(game.player_black):
-        bot.send_message(chat_id, "شما حرکتی ندارید! نوبت به AI واگذار شد.")
+        bot.send_message(chat_id, "You have no valid moves! Turn passed to the AI.")
         game.current_player = game.player_white
         time.sleep(1)
         process_game_turn_ai(game_id, message)
@@ -279,19 +279,19 @@ def check_game_over(game_id, message=None):
         p2_score = score.get(game.player_white, 0)
 
         if p1_score > p2_score:
-            result_text = f"🎉 {game.player1_name} ({game.player_black}) برنده شد!"
+            result_text = f"🎉 {game.player1_name} ({game.player_black}) wins!"
             update_stats(game.player1_id, 'win')
             update_stats(game.player2_id, 'loss')
         elif p2_score > p1_score:
-            result_text = f"🎉 {game.player2_name} ({game.player_white}) برنده شد!"
+            result_text = f"🎉 {game.player2_name} ({game.player_white}) wins!"
             update_stats(game.player2_id, 'win')
             update_stats(game.player1_id, 'loss')
         else:
-            result_text = "🤝 بازی مساوی شد!"
+            result_text = "🤝 The game ended in a draw!"
             update_stats(game.player1_id, 'draw')
             update_stats(game.player2_id, 'draw')
 
-        final_text = f"{create_board_string(game, '')}\n\n--- بازی تمام شد ---\n{result_text}"
+        final_text = f"{create_board_string(game, '')}\n\n--- Game Over ---\n{result_text}"
 
         if message:
             bot.edit_message_text(final_text, message.chat.id, message.message_id, reply_markup=None)
@@ -308,12 +308,12 @@ def create_board_string(game, mode):
     p2_score = score.get(game.player_white, 0)
 
     if mode in ["ai", "2p"]:
-        current_player_name = game.get_current_player_name() or "بازیکن"
-        turn_text = f"نوبت {current_player_name} ({game.current_player})"
+        current_player_name = game.get_current_player_name() or "Player"
+        turn_text = f"{current_player_name}'s turn ({game.current_player})"
     else:
         turn_text = ""
 
-    return f"امتیاز: ⚫️ {p1_score} - {p2_score} ⚪️\n{turn_text}"
+    return f"Score: ⚫️ {p1_score} - {p2_score} ⚪️\n{turn_text}"
 
 def create_board_keyboard(game, mode, game_id):
     markup = types.InlineKeyboardMarkup(row_width=8)
@@ -336,7 +336,7 @@ def create_board_keyboard(game, mode, game_id):
     markup.keyboard = buttons
     markup.add(
         types.InlineKeyboardButton(
-            "❌ اتمام بازی (تسلیم)",
+            "❌ Surrender",
             callback_data=f"forfeit_{mode}_{game_id}"
         )
     )
