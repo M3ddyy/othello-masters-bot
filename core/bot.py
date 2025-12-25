@@ -7,7 +7,7 @@ from game import Othello
 import time
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
-STATS_FILE = 'stats.json'
+STATS_FILE = '../stats.json'
 bot = telebot.TeleBot(TOKEN)
 
 games = {}
