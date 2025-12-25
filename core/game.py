@@ -1,13 +1,15 @@
-# game.py
 import random
 
-
 class Othello:
-    def __init__(self):
+    def __init__(self, player1_id=None, player1_name=None, player2_id=None, player2_name=None):
         self.board_size = 8
         self.player_black = '⚫️'
         self.player_white = '⚪️'
-        self.empty_square = '\u200b'
+        self.empty_square = '🟩'
+        self.player1_name = player1_name
+        self.player2_name = player2_name
+        self.player1_id = player1_id
+        self.player2_id = player2_id
         self.reset_board()
 
     def new_board(self):
@@ -25,9 +27,24 @@ class Othello:
     def get_opponent(self, player):
         return self.player_white if player == self.player_black else self.player_black
 
+    def get_current_player_id(self):
+        if self.current_player == self.player_black:
+            return self.player1_id
+        else:
+            return self.player2_id
+
+    def get_current_player_name(self):
+        if self.current_player == self.player_black:
+            return self.player1_name
+        else:
+            return self.player2_name
+
     def is_valid_move(self, row, col, player):
-        if not (0 <= row < self.board_size and 0 <= col < self.board_size and self.board[row][
-            col] == self.empty_square):
+        if not (
+            0 <= row < self.board_size and
+            0 <= col < self.board_size and
+            self.board[row][col] == self.empty_square
+        ):
             return False
 
         opponent = self.get_opponent(player)
@@ -44,8 +61,12 @@ class Othello:
         return False
 
     def get_valid_moves(self, player):
-        return [(r, c) for r in range(self.board_size) for c in range(self.board_size) if
-                self.is_valid_move(r, c, player)]
+        return [
+            (r, c)
+            for r in range(self.board_size)
+            for c in range(self.board_size)
+            if self.is_valid_move(r, c, player)
+        ]
 
     def make_move(self, row, col, player):
         if not self.is_valid_move(row, col, player):
