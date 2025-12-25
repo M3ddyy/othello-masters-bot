@@ -12,6 +12,7 @@ class Game:
         self.board[4][3] = 'B'
         self.board[4][4] = 'W'
         self.current_player = 'B'
+        self.players = {}  # {'B': chat_id, 'W': chat_id}
 
     def print_board(self):
         print('  0 1 2 3 4 5 6 7')
@@ -66,3 +67,18 @@ class Game:
 
     def switch_player(self):
         self.current_player = 'W' if self.current_player == 'B' else 'B'
+
+    def is_game_over(self):
+        for i in range(8):
+            for j in range(8):
+                if self.board[i][j] == ' ':
+                    self.current_player_backup = self.current_player
+                    if self.is_valid_move(i,j):
+                        self.current_player = self.current_player_backup
+                        return False
+        return True
+
+    def get_score(self):
+        b_count = sum(row.count('B') for row in self.board)
+        w_count = sum(row.count('W') for row in self.board)
+        return b_count, w_count
