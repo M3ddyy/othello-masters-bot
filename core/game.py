@@ -1,5 +1,3 @@
-import random
-
 class Othello:
     def __init__(self, player1_id=None, player1_name=None, player2_id=None, player2_name=None):
         self.board_size = 8
@@ -100,8 +98,96 @@ class Othello:
                     score[self.board[r][c]] += 1
         return score
 
+    def evaluate_board(self, board, player):
+        opponent = self.player_white if player == self.player_black else self.player_black
+
+        weights = [
+            [100, -20, 10, 5, 5, 10, -20, 100],
+            [-20, -50, -2, -2, -2, -2, -50, -20],
+            [10, -2, -1, -1, -1, -1, -2, 10],
+            [5, -2, -1, -1, -1, -1, -2, 5],
+            [5, -2, -1, -1, -1, -1, -2, 5],
+            [10, -2, -1, -1, -1, -1, -2, 10],
+            [-20, -50, -2, -2, -2, -2, -50, -20],
+            [100, -20, 10, 5, 5, 10, -20, 100]
+        ]
+
+        score = 0
+        for r in range(8):
+            for c in range(8):
+                if board[r][c] == player:
+                    score += weights[r][c]
+                elif board[r][c] == opponent:
+                    score -= weights[r][c]
+        return score
+
     def get_ai_move(self):
-        valid_moves = self.get_valid_moves(self.player_white)
-        if not valid_moves:
-            return None
-        return random.choice(valid_moves)
+        import copy
+
+        def get_valid_moves_sim(board, player):
+            moves = []
+            opponent = self.player_white if player == self.player_black else self.player_black
+            for r in range(8):
+                for c in range(8):
+                    if board[r][c] != self.empty_square: continue
+                    for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1), (1, -1), (-1, 1)]:
+                        rr, cc = r + dr, c + dc
+                        if 0 <= rr < 8 and 0 <= cc < 8 and board[rr][cc] == opponent:
+                            while 0 <= rr < 8 and 0 <= cc < 8:
+                                rr += dr
+                                cc += dc
+                                if not (0 <= rr < 8 and 0 <= cc < 8): break
+                                if board[rr][cc] == player:
+                                    moves.append((r, c))
+                                    break
+                                if board[rr][cc] == self.empty_square: break
+                    if (r, c) in moves: continue
+            return list(set(moves))
+
+        def simulate_move(board, move, player):
+            new_board = copy.deepcopy(board)
+            r, c = move
+            new_board[r][c] = player
+            opponent = self.player_white if player == self.player_black else self.player_black
+
+            for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1), (1, -1), (-1, 1)]:
+                rr, cc = r + dr, c + dc
+                tiles = []
+                while 0 <= rr < 8 and 0 <= cc < 8 and new_board[rr][cc] == opponent:
+                    tiles.append((rr, cc))
+                    rr += dr
+                    cc += dc
+                if 0 <= rr < 8 and 0 <= cc < 8 and new_board[rr][cc] == player:
+                    for tr, tc in tiles:
+                        new_board[tr][tc] = player
+            return new_board
+
+        def minimax(board, depth, maximizing_player, current_turn_player):
+            valid_moves = get_valid_moves_sim(board, current_turn_player)
+
+            if depth == 0 or not valid_moves:
+                return self.evaluate_board(board, self.player_white), None
+
+            best_move = valid_moves[0]
+
+            if maximizing_player:
+                max_eval = -float('inf')
+                for move in valid_moves:
+                    new_board = simulate_move(board, move, current_turn_player)
+                    eval_score, _ = minimax(new_board, depth - 1, False, self.player_black)
+                    if eval_score > max_eval:
+                        max_eval = eval_score
+                        best_move = move
+                return max_eval, best_move
+            else:
+                min_eval = float('inf')
+                for move in valid_moves:
+                    new_board = simulate_move(board, move, current_turn_player)
+                    eval_score, _ = minimax(new_board, depth - 1, True, self.player_white)
+                    if eval_score < min_eval:
+                        min_eval = eval_score
+                        best_move = move
+                return min_eval, best_move
+
+        _, best_move = minimax(self.board, 3, True, self.player_white)
+        return best_move
